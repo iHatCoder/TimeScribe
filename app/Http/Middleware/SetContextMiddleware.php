@@ -26,7 +26,7 @@ class SetContextMiddleware
             'name' => $username,
         ]));
 
-        Nightwatch::user(fn () => [
+        Nightwatch::user(fn (): array => [
             'username' => $username,
             'version' => $version,
         ]);
