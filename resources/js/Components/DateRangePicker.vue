@@ -17,7 +17,7 @@ import { usePage } from '@inertiajs/vue3'
 import { type DateValue, getLocalTimeZone, isEqualMonth, parseDate, today } from '@internationalized/date'
 import { Calendar, ChevronLeft, ChevronRight, X } from '@lucide/vue'
 import { type DateRange, RangeCalendarRoot, useDateFormatter } from 'reka-ui'
-import { createMonth, type Grid, toDate } from 'reka-ui/date'
+import { createMonth, getWeekStartsOn, type Grid, toDate } from 'reka-ui/date'
 import { computed, type HTMLAttributes, type Ref, ref, watch } from 'vue'
 
 type ExternalDateRange = {
@@ -104,8 +104,13 @@ watch(open, () => {
 })
 
 const page = usePage()
-const locale = ref(page.props.js_locale)
+const locale = computed(() => page.props.js_locale)
+const weekStartsOn = computed(() => getWeekStartsOn(locale.value))
 const formatter = useDateFormatter(locale.value)
+
+watch(locale, (nextLocale) => {
+    formatter.setLocale(nextLocale)
+})
 
 const initialPlaceholder = (value.value.start ?? parseExternalDate(props.min) ?? today(getLocalTimeZone())) as DateValue
 const calendarPlaceholder = ref(initialPlaceholder) as Ref<DateValue>
@@ -117,22 +122,16 @@ if (isEqualMonth(secondMonthPlaceholder.value, calendarPlaceholder.value)) {
     })
 }
 
-const firstMonth = ref(
+const createLocalizedMonth = (dateObj: DateValue, fixedWeeks: boolean) =>
     createMonth({
-        dateObj: calendarPlaceholder.value,
+        dateObj,
         locale: locale.value,
-        fixedWeeks: true,
-        weekStartsOn: 0
+        fixedWeeks,
+        weekStartsOn: weekStartsOn.value
     })
-) as Ref<Grid<DateValue>>
-const secondMonth = ref(
-    createMonth({
-        dateObj: secondMonthPlaceholder.value,
-        locale: locale.value,
-        fixedWeeks: true,
-        weekStartsOn: 0
-    })
-) as Ref<Grid<DateValue>>
+
+const firstMonth = ref(createLocalizedMonth(calendarPlaceholder.value, true)) as Ref<Grid<DateValue>>
+const secondMonth = ref(createLocalizedMonth(secondMonthPlaceholder.value, true)) as Ref<Grid<DateValue>>
 
 function updateMonth(reference: 'first' | 'second', months: number) {
     if (reference === 'first') {
@@ -153,13 +152,9 @@ const clearDateRange = () => {
     open.value = false
 }
 
-watch(calendarPlaceholder, (_placeholder) => {
-    firstMonth.value = createMonth({
-        dateObj: _placeholder,
-        weekStartsOn: 0,
-        fixedWeeks: false,
-        locale: locale.value
-    })
+watch([calendarPlaceholder, weekStartsOn], ([_placeholder]) => {
+    firstMonth.value = createLocalizedMonth(_placeholder, false)
+
     if (isEqualMonth(secondMonthPlaceholder.value, _placeholder)) {
         secondMonthPlaceholder.value = secondMonthPlaceholder.value.add({
             months: 1
@@ -167,15 +162,12 @@ watch(calendarPlaceholder, (_placeholder) => {
     }
 })
 
-watch(secondMonthPlaceholder, (_secondMonthPlaceholder) => {
-    secondMonth.value = createMonth({
-        dateObj: _secondMonthPlaceholder,
-        weekStartsOn: 0,
-        fixedWeeks: false,
-        locale: locale.value
-    })
-    if (isEqualMonth(_secondMonthPlaceholder, calendarPlaceholder.value))
+watch([secondMonthPlaceholder, weekStartsOn], ([_secondMonthPlaceholder]) => {
+    secondMonth.value = createLocalizedMonth(_secondMonthPlaceholder, false)
+
+    if (isEqualMonth(_secondMonthPlaceholder, calendarPlaceholder.value)) {
         calendarPlaceholder.value = calendarPlaceholder.value.subtract({ months: 1 })
+    }
 })
 </script>
 
@@ -236,9 +228,10 @@ watch(secondMonthPlaceholder, (_secondMonthPlaceholder) => {
         </PopoverAnchor>
         <PopoverContent @pointerDownOutside="open = false" class="w-auto p-0">
             <RangeCalendarRoot
-                :locale="$page.props.js_locale"
+                :locale="locale"
                 :max-value="maxDate"
                 :min-value="minDate"
+                :week-starts-on="weekStartsOn"
                 class="p-3"
                 v-model="value"
                 v-model:placeholder="calendarPlaceholder"
