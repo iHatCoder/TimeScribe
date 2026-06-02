@@ -32,6 +32,7 @@ use App\Settings\GeneralSettings;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Redirector;
+use Laravel\Nightwatch\Http\Middleware\Sample;
 use Native\Desktop\Facades\App;
 
 Route::get('/', function (GeneralSettings $settings): Redirector|RedirectResponse {
@@ -68,7 +69,7 @@ Route::patch('welcome', [WelcomeController::class, 'update'])->name('welcome.upd
 Route::get('welcome/finish/{openSettings?}', [WelcomeController::class, 'finish'])->name('welcome.finish');
 
 Route::name('menubar.')->prefix('menubar')->group(function (): void {
-    Route::get('', [MenubarController::class, 'index'])->name('index');
+    Route::get('', [MenubarController::class, 'index'])->name('index')->middleware(Sample::never());
     Route::post('break', [MenubarController::class, 'storeBreak'])->name('storeBreak');
     Route::post('work', [MenubarController::class, 'storeWork'])->name('storeWork');
     Route::post('stop', [MenubarController::class, 'storeStop'])->name('storeStop');
@@ -77,7 +78,7 @@ Route::name('menubar.')->prefix('menubar')->group(function (): void {
 });
 
 Route::name('fly-timer.')->prefix('fly-timer')->group(function (): void {
-    Route::get('', [FlyTimerController::class, 'index'])->name('index');
+    Route::get('', [FlyTimerController::class, 'index'])->name('index')->middleware(Sample::never());
     Route::post('work', [FlyTimerController::class, 'storeBreak'])->name('storeBreak');
     Route::post('break', [FlyTimerController::class, 'storeWork'])->name('storeWork');
     Route::post('stop', [FlyTimerController::class, 'storeStop'])->name('storeStop');
