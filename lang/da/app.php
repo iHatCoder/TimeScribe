@@ -280,6 +280,7 @@ return [
     'remove' => 'Fjern',
     'report a bug' => 'Rapporter en fejl',
     'report a bug & give feedback' => 'Rapporter en fejl og giv feedback',
+    'reset' => 'Nulstil',
     'restore backup' => 'Gendan sikkerhedskopi',
     'restore failed.' => 'Gendannelse mislykkedes.',
     'restore successful.' => 'Gendannelse lykkedes.',

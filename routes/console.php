@@ -17,7 +17,7 @@ Artisan::command('optimize', function (): void {
 });
 
 Schedule::when(fn () => Timestamp::whereNull('ended_at')->exists())->group(function (): void {
-    Schedule::job(new MenubarRefresh)->everyFifteenSeconds();
+    Schedule::call(fn () => dispatch_sync(new MenubarRefresh))->everySecond();
     Schedule::job(new CalculateWeekBalance)->everyMinute();
 });
 

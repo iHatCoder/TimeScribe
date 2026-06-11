@@ -280,6 +280,7 @@ return [
     'remove' => 'Rimuovi',
     'report a bug' => 'Segnala un bug',
     'report a bug & give feedback' => 'Segnala un bug e invia feedback',
+    'reset' => 'Reimposta',
     'restore backup' => 'Ripristina backup',
     'restore failed.' => 'Ripristino fallito.',
     'restore successful.' => 'Ripristino riuscito.',

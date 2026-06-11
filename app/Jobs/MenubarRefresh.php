@@ -8,14 +8,10 @@ use App\Enums\TimestampTypeEnum;
 use App\Services\LocaleService;
 use App\Services\TimestampService;
 use App\Services\TrayIconService;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Queue\Queueable;
 use Native\Desktop\Facades\MenuBar;
 
-class MenubarRefresh implements ShouldQueue
+class MenubarRefresh
 {
-    use Queueable;
-
     /**
      * Execute the job.
      */
@@ -23,6 +19,11 @@ class MenubarRefresh implements ShouldQueue
     {
         try {
             new LocaleService;
+        } catch (\Throwable) {
+            //
+        }
+
+        try {
             $currentType = TimestampService::getCurrentType();
 
             if ($currentType === TimestampTypeEnum::WORK) {
@@ -39,10 +40,22 @@ class MenubarRefresh implements ShouldQueue
                 return;
             }
 
-            MenuBar::tooltip(gmdate('G:i', (int) $time));
-            MenuBar::label(gmdate('G:i', (int) $time));
+            $duration = self::formatDuration($time);
+
+            MenuBar::tooltip($duration);
+            MenuBar::label($duration);
         } catch (\Throwable) {
             return;
         }
+    }
+
+    public static function formatDuration(float|int $seconds): string
+    {
+        $seconds = max(0, (int) floor($seconds));
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+        $remainingSeconds = $seconds % 60;
+
+        return sprintf('%02d:%02d:%02d', $hours, $minutes, $remainingSeconds);
     }
 }

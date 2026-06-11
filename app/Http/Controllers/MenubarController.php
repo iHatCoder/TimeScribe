@@ -87,6 +87,14 @@ class MenubarController extends Controller
         return to_route('menubar.index');
     }
 
+    public function resetWorkTime(): RedirectResponse
+    {
+        TimestampService::resetTodayWorkTime();
+        dispatch_sync(new MenubarRefresh);
+
+        return to_route('menubar.index');
+    }
+
     public function setProject(ProjectSettings $projectSettings, int $project): RedirectResponse
     {
         $projectSettings->currentProject = $project;

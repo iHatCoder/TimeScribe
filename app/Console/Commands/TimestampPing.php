@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Jobs\MenubarRefresh;
 use App\Services\LocaleService;
 use App\Services\TimestampService;
 use Illuminate\Console\Command;
@@ -29,7 +30,13 @@ class TimestampPing extends Command
      */
     public function handle(): void
     {
-        new LocaleService;
+        try {
+            new LocaleService;
+        } catch (\Throwable) {
+            //
+        }
+
         TimestampService::ping();
+        dispatch_sync(new MenubarRefresh);
     }
 }

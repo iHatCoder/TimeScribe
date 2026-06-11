@@ -5,7 +5,7 @@ import BasicLayout from '@/Layouts/BasicLayout.vue'
 import { secToFormat } from '@/lib/utils'
 import { ActivityHistory, Project } from '@/types'
 import { Head, Link, router, usePoll } from '@inertiajs/vue3'
-import { ChartColumnBig, Coffee, Cog, PictureInPicture, Play, Plus, Sparkles, Square, Tag, X } from '@lucide/vue'
+import { ChartColumnBig, Coffee, Cog, PictureInPicture, Play, Plus, RotateCcw, Sparkles, Square, Tag, X } from '@lucide/vue'
 import { useColorMode } from '@vueuse/core'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
@@ -253,6 +253,21 @@ const removeProject = () => {
                 >
                     {{ $t('app.work hours') }}
                 </div>
+                <Button
+                    :as="Link"
+                    :disabled="loading"
+                    :href="route('menubar.resetWorkTime')"
+                    @click="router.flushAll()"
+                    class="mt-2 h-6 gap-1 px-2 text-[0.68rem] uppercase tracking-normal"
+                    method="POST"
+                    preserve-scroll
+                    preserve-state
+                    size="sm"
+                    variant="ghost"
+                >
+                    <RotateCcw class="size-3" />
+                    {{ $t('app.reset') }}
+                </Button>
             </div>
             <transition
                 class="transform-gpu transition-all duration-1000"

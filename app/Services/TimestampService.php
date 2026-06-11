@@ -79,29 +79,113 @@ class TimestampService
         TimerStopped::broadcast();
     }
 
+    public static function resetTodayWorkTime(?Carbon $resetAt = null): void
+    {
+        self::ping();
+
+        $resetAt ??= Date::now();
+        $today = $resetAt->copy()->startOfDay();
+        $endOfDay = $resetAt->copy()->endOfDay();
+
+        $timestamps = Timestamp::where('type', TimestampTypeEnum::WORK)
+            ->where('started_at', '<=', $endOfDay)
+            ->where(function ($query) use ($today): void {
+                $query->whereNull('ended_at')
+                    ->orWhere('ended_at', '>=', $today);
+            })
+            ->get();
+
+        foreach ($timestamps as $timestamp) {
+            if ($timestamp->ended_at === null) {
+                if ($timestamp->started_at->lt($today)) {
+                    $timestamp->update([
+                        'ended_at' => $today,
+                        'last_ping_at' => $today,
+                    ]);
+
+                    Timestamp::create([
+                        'type' => $timestamp->type,
+                        'project_id' => $timestamp->project_id,
+                        'description' => $timestamp->description,
+                        'source' => $timestamp->source,
+                        'paid' => $timestamp->paid,
+                        'started_at' => $resetAt,
+                        'last_ping_at' => $resetAt,
+                    ]);
+
+                    continue;
+                }
+
+                $timestamp->update([
+                    'started_at' => $resetAt,
+                    'last_ping_at' => $resetAt,
+                ]);
+
+                continue;
+            }
+
+            if ($timestamp->started_at->lt($today)) {
+                $timestamp->update([
+                    'ended_at' => $today,
+                    'last_ping_at' => $today,
+                ]);
+
+                continue;
+            }
+
+            $timestamp->delete();
+        }
+    }
+
     public static function ping(): void
     {
         self::checkStopTimeReset();
 
+        $now = Date::now();
+        $today = $now->copy()->startOfDay();
+
         $activeTimestamps = Timestamp::whereNull('ended_at')
-            ->where('last_ping_at', '>=', now()->subHours(8))->get();
+            ->where('last_ping_at', '>=', $now->copy()->subHours(8))->get();
 
         foreach ($activeTimestamps as $timestamp) {
-            $timestamp->update(['last_ping_at' => now()]);
-
-            if ($timestamp->started_at->isYesterday()) {
+            if ($timestamp->started_at->lt($today)) {
                 $endedAt = $timestamp->started_at->copy()->endOfDay();
                 $timestamp->update([
                     'ended_at' => $endedAt,
                     'last_ping_at' => $endedAt,
                 ]);
-                Timestamp::create([
+
+                $newTimestamp = [
                     'type' => $timestamp->type,
-                    'started_at' => today(),
-                    'last_ping_at' => now(),
+                    'project_id' => $timestamp->project_id,
+                    'description' => $timestamp->description,
+                    'source' => $timestamp->source,
+                    'paid' => $timestamp->paid,
+                ];
+
+                $completedDay = $timestamp->started_at->copy()->addDay()->startOfDay();
+                while ($completedDay->lt($today)) {
+                    Timestamp::create([
+                        ...$newTimestamp,
+                        'started_at' => $completedDay->copy(),
+                        'ended_at' => $completedDay->copy()->endOfDay(),
+                        'last_ping_at' => $completedDay->copy()->endOfDay(),
+                    ]);
+
+                    $completedDay->addDay();
+                }
+
+                Timestamp::create([
+                    ...$newTimestamp,
+                    'started_at' => $today,
+                    'last_ping_at' => $now,
                 ]);
                 dispatch(new CalculateWeekBalance);
+
+                continue;
             }
+
+            $timestamp->update(['last_ping_at' => $now]);
         }
         self::createStopByOldTimestamps();
     }
@@ -158,8 +242,15 @@ class TimestampService
             $endDate = $date->copy();
         }
 
-        $timestamps = Timestamp::with('project')->whereDate('started_at', '>=', $date->startOfDay())
-            ->whereDate('started_at', '<=', $endDate->endOfDay())
+        $startOfDay = $date->copy()->startOfDay();
+        $endOfDay = $endDate->copy()->endOfDay();
+
+        $timestamps = Timestamp::with('project')
+            ->where('started_at', '<=', $endOfDay)
+            ->where(function ($query) use ($startOfDay): void {
+                $query->whereNull('ended_at')
+                    ->orWhere('ended_at', '>=', $startOfDay);
+            })
             ->when($project, fn ($query) => $query->where('project_id', $project->id))
             ->where('type', $type)
             ->get();
@@ -168,10 +259,10 @@ class TimestampService
 
         if (! $project instanceof Project) {
 
-            $holiday = HolidayService::getHoliday([$date->year, $endDate->year]);
-            $absence = self::getAbsence($date, $endDate);
+            $holiday = HolidayService::getHoliday([$startOfDay->year, $endOfDay->year]);
+            $absence = self::getAbsence($startOfDay, $endOfDay);
 
-            $periode = CarbonPeriod::create($date, $endDate);
+            $periode = CarbonPeriod::create($startOfDay, $endOfDay);
 
             if ($type === TimestampTypeEnum::WORK) {
                 foreach ($periode as $rangeDate) {
@@ -185,7 +276,7 @@ class TimestampService
             }
         }
 
-        return self::summarizeTimeResult($timestamps, $date, $endDate, $absenceTime, $fallbackNow, $project);
+        return self::summarizeTimeResult($timestamps, $startOfDay, $endOfDay, $absenceTime, $fallbackNow, $project);
     }
 
     /**
@@ -205,9 +296,16 @@ class TimestampService
         ];
 
         foreach ($timestamps as $timestamp) {
-            $fallbackTime = ($date->isToday() || $project && $endDate->isToday()) && $fallbackNow ? now() : $timestamp->last_ping_at;
-            $diffTime = $timestamp->ended_at ?? $fallbackTime;
-            $duration = floor($timestamp->started_at->diff($diffTime)->totalSeconds);
+            $fallbackTime = ($date->isToday() || $endDate->isToday()) && $fallbackNow ? Date::now() : $timestamp->last_ping_at;
+            $diffStart = $timestamp->started_at->greaterThan($date) ? $timestamp->started_at : $date;
+            $diffEnd = $timestamp->ended_at ?? $fallbackTime;
+            $diffEnd = $diffEnd->lessThan($endDate) ? $diffEnd : $endDate;
+
+            if ($diffEnd->lessThanOrEqualTo($diffStart)) {
+                continue;
+            }
+
+            $duration = floor($diffStart->diff($diffEnd)->totalSeconds);
 
             if ($timestamp->project_id) {
                 if (! isset($return['projects'][$timestamp->project_id])) {

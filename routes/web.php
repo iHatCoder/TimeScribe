@@ -73,6 +73,7 @@ Route::name('menubar.')->prefix('menubar')->group(function (): void {
     Route::post('break', [MenubarController::class, 'storeBreak'])->name('storeBreak');
     Route::post('work', [MenubarController::class, 'storeWork'])->name('storeWork');
     Route::post('stop', [MenubarController::class, 'storeStop'])->name('storeStop');
+    Route::post('reset-work-time', [MenubarController::class, 'resetWorkTime'])->name('resetWorkTime');
     Route::post('set-project/{project}', [MenubarController::class, 'setProject'])->name('set-project');
     Route::post('remove-project', [MenubarController::class, 'removeProject'])->name('remove-project');
 });

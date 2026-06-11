@@ -280,6 +280,7 @@ return [
     'remove' => '移除',
     'report a bug' => '报告错误',
     'report a bug & give feedback' => '报告错误并提供反馈',
+    'reset' => '重置',
     'restore backup' => '恢复备份',
     'restore failed.' => '恢复失败。',
     'restore successful.' => '恢复成功。',

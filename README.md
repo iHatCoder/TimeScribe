@@ -68,6 +68,7 @@ Simply put: It's a professional time tracking tool that respects your privacy an
 ## ✨ Key Features
 
 - ✅ Start, pause, and stop tracking with one click
+- 🔄 Daily work hours reset at local midnight, with a manual reset button for the current day
 - 📊 Visualize your day and weekly work patterns
 - ⏱ See app usage and categorize work vs distractions
 - 🗓️ Plan absences like vacation, sick leave, and holidays
@@ -157,9 +158,26 @@ php artisan key:generate
 npm run build
 php artisan native:build mac
 
+# Local unsigned macOS builds may need a consistent ad-hoc signature before sharing the .dmg.
+# This prevents Electron Framework "different Team IDs" crashes on another Mac.
+codesign --force --deep --sign - nativephp/electron/dist/mac-arm64/TimeScribe.app
+hdiutil create -volname TimeScribe -srcfolder nativephp/electron/dist/mac-arm64 -ov -format UDZO nativephp/electron/dist/TimeScribe-1.0.0-local-arm64.dmg
+
+# Repeat for Intel builds when needed.
+codesign --force --deep --sign - nativephp/electron/dist/mac/TimeScribe.app
+hdiutil create -volname TimeScribe -srcfolder nativephp/electron/dist/mac -ov -format UDZO nativephp/electron/dist/TimeScribe-1.0.0-local-x64.dmg
+
 # Build for Windows (coming soon or adjust accordingly)
 php artisan native:build win
 ```
+
+### Daily Work Hours Reset
+
+The `WORK HOURS` counter is scoped to the current local calendar day. If a work timer stays active across midnight, TimeScribe splits the active timestamp at the day boundary so yesterday's work remains in history and today's counter starts at `00:00:00`.
+
+The reset button below `WORK HOURS` is manual only. Clicking it clears today's accumulated work time and restarts the active work timer from `00:00:00`; it does not reset break time or previous days.
+
+The macOS menu bar label uses the same second-level duration as the menubar popover, so both should show the same value while tracking is active.
 
 ## 🖼 Screenshots
 
