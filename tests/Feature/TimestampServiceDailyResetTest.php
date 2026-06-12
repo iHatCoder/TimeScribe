@@ -126,9 +126,10 @@ it('refreshes the native menu bar label with the same second-level duration as w
 
     MenuBar::shouldReceive('icon')->once();
     MenuBar::shouldReceive('tooltip')->once()->with('00:06:15');
-    MenuBar::shouldReceive('label')->once()->with('00:06:15');
+    MenuBar::shouldReceive('label')->once()->with('0:06');
 
     (new MenubarRefresh)->handle();
 
-    expect(MenubarRefresh::formatDuration(TimestampService::getWorkTime()))->toBe('00:06:15');
+    expect(MenubarRefresh::formatDuration(TimestampService::getWorkTime()))->toBe('00:06:15')
+        ->and(MenubarRefresh::formatLabelDuration(47132))->toBe('13:05');
 });

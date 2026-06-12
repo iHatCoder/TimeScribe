@@ -177,7 +177,7 @@ The `WORK HOURS` counter is scoped to the current local calendar day. If a work 
 
 The reset button below `WORK HOURS` is manual only. Clicking it clears today's accumulated work time and restarts the active work timer from `00:00:00`; it does not reset break time or previous days.
 
-The macOS menu bar label uses the same second-level duration as the menubar popover, so both should show the same value while tracking is active.
+The macOS menubar popover and tooltip keep the full `HH:MM:SS` duration. The always-visible menu bar label uses a compact `H:MM` duration so it still fits on crowded or notched Mac menu bars.
 
 ## 🖼 Screenshots
 

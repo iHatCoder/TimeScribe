@@ -43,7 +43,7 @@ class MenubarRefresh
             $duration = self::formatDuration($time);
 
             MenuBar::tooltip($duration);
-            MenuBar::label($duration);
+            MenuBar::label(self::formatLabelDuration($time));
         } catch (\Throwable) {
             return;
         }
@@ -57,5 +57,14 @@ class MenubarRefresh
         $remainingSeconds = $seconds % 60;
 
         return sprintf('%02d:%02d:%02d', $hours, $minutes, $remainingSeconds);
+    }
+
+    public static function formatLabelDuration(float|int $seconds): string
+    {
+        $seconds = max(0, (int) floor($seconds));
+        $hours = intdiv($seconds, 3600);
+        $minutes = intdiv($seconds % 3600, 60);
+
+        return sprintf('%d:%02d', $hours, $minutes);
     }
 }
