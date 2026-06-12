@@ -40,22 +40,57 @@ class TimestampService
 
     private static function makeEndings(): void
     {
-        $unclosedDays = Timestamp::whereNull('ended_at')
-            ->whereDate('started_at', '<', today())
-            ->get();
+        $endedAt = Date::now();
+        $today = $endedAt->copy()->startOfDay();
 
-        foreach ($unclosedDays as $timestamp) {
-            $timestamp->update(['ended_at' => $timestamp->last_ping_at]);
-            if ($timestamp->last_ping_at->diffInMinutes(now()) < 60) {
-                Timestamp::create([
-                    'type' => $timestamp->type,
-                    'started_at' => today(),
-                    'last_ping_at' => now(),
+        $activeTimestamps = Timestamp::whereNull('ended_at')->get();
+
+        foreach ($activeTimestamps as $timestamp) {
+            if ($timestamp->started_at->lt($today)) {
+                $endedAtPreviousDay = $timestamp->started_at->copy()->endOfDay();
+
+                $timestamp->update([
+                    'ended_at' => $endedAtPreviousDay,
+                    'last_ping_at' => $endedAtPreviousDay,
                 ]);
-            }
-        }
 
-        Timestamp::whereNull('ended_at')->update(['ended_at' => now()]);
+                $newTimestamp = [
+                    'type' => $timestamp->type,
+                    'project_id' => $timestamp->project_id,
+                    'description' => $timestamp->description,
+                    'source' => $timestamp->source,
+                    'paid' => $timestamp->paid,
+                ];
+
+                $completedDay = $timestamp->started_at->copy()->addDay()->startOfDay();
+                while ($completedDay->lt($today)) {
+                    Timestamp::create([
+                        ...$newTimestamp,
+                        'started_at' => $completedDay->copy(),
+                        'ended_at' => $completedDay->copy()->endOfDay(),
+                        'last_ping_at' => $completedDay->copy()->endOfDay(),
+                    ]);
+
+                    $completedDay->addDay();
+                }
+
+                if ($endedAt->gt($today)) {
+                    Timestamp::create([
+                        ...$newTimestamp,
+                        'started_at' => $today,
+                        'ended_at' => $endedAt,
+                        'last_ping_at' => $endedAt,
+                    ]);
+                }
+
+                continue;
+            }
+
+            $timestamp->update([
+                'ended_at' => $endedAt,
+                'last_ping_at' => $endedAt,
+            ]);
+        }
     }
 
     public static function startWork(): void

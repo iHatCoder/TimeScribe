@@ -18,6 +18,17 @@ afterEach(function (): void {
     Date::setTestNow();
 });
 
+function useUtcTimeSettings(): void
+{
+    $settings = resolve(GeneralSettings::class);
+    $settings->locale = 'en_US';
+    $settings->timezone = 'UTC';
+    $settings->save();
+
+    config(['app.timezone' => 'UTC']);
+    date_default_timezone_set('UTC');
+}
+
 it('counts an open work timestamp only inside the requested day', function (): void {
     Date::setTestNow('2025-01-15 01:06:45');
 
@@ -107,7 +118,59 @@ it('resets today work time only when the reset action is posted', function (): v
         ->and($activeTimestamp->last_ping_at->format('Y-m-d H:i:s'))->toBe('2025-01-15 11:00:00');
 });
 
-it('refreshes the native menu bar label with the same second-level duration as work hours', function (): void {
+it('keeps previous work time when continuing after a break', function (): void {
+    useUtcTimeSettings();
+
+    Date::setTestNow('2025-01-15 09:00:00');
+
+    TimestampService::startWork();
+
+    Date::setTestNow('2025-01-15 10:55:00');
+
+    expect(TimestampService::getWorkTime())->toBe(6900.0);
+
+    TimestampService::startBreak();
+
+    Date::setTestNow('2025-01-15 11:10:00');
+
+    expect(TimestampService::getWorkTime())->toBe(6900.0)
+        ->and(TimestampService::getBreakTime())->toBe(900.0);
+
+    TimestampService::startWork();
+
+    expect(TimestampService::getWorkTime())->toBe(6900.0)
+        ->and(TimestampService::getBreakTime())->toBe(900.0)
+        ->and(Timestamp::query()->whereNull('ended_at')->sole()->type)->toBe(TimestampTypeEnum::WORK);
+});
+
+it('keeps current day work time when starting a break after work crossed midnight', function (): void {
+    useUtcTimeSettings();
+
+    Date::setTestNow('2025-01-15 01:55:00');
+
+    Timestamp::create([
+        'type' => TimestampTypeEnum::WORK,
+        'started_at' => Date::parse('2025-01-14 22:00:00'),
+        'last_ping_at' => Date::parse('2025-01-15 00:55:00'),
+    ]);
+
+    expect(TimestampService::getWorkTime())->toBe(6900.0);
+
+    TimestampService::startBreak();
+
+    expect(TimestampService::getWorkTime())->toBe(6900.0)
+        ->and(Timestamp::query()->whereNull('ended_at')->sole()->type)->toBe(TimestampTypeEnum::BREAK);
+
+    Date::setTestNow('2025-01-15 02:10:00');
+
+    TimestampService::startWork();
+
+    expect(TimestampService::getWorkTime())->toBe(6900.0)
+        ->and(TimestampService::getBreakTime())->toBe(900.0)
+        ->and(Timestamp::query()->whereNull('ended_at')->sole()->type)->toBe(TimestampTypeEnum::WORK);
+});
+
+it('refreshes the native menu bar label with a compact duration and full tooltip', function (): void {
     $settings = resolve(GeneralSettings::class);
     $settings->locale = 'en_US';
     $settings->timezone = 'America/Los_Angeles';
