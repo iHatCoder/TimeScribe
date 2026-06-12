@@ -69,6 +69,7 @@ Simply put: It's a professional time tracking tool that respects your privacy an
 
 - ✅ Start, pause, and stop tracking with one click
 - 🔄 Daily work hours reset at local midnight, with a manual reset button for the current day
+- 🧭 Compact macOS menu bar status label with full second-level detail in the popover
 - 📊 Visualize your day and weekly work patterns
 - ⏱ See app usage and categorize work vs distractions
 - 🗓️ Plan absences like vacation, sick leave, and holidays
@@ -111,7 +112,7 @@ Head to the [latest release](https://github.com/WINBIGFOX/timescribe/releases/la
 Then:
 
 - **Windows**: Run the `.exe` and follow the setup instructions.
-- **macOS**: Open the `.dmg`, then drag TimeScribe to your Applications folder.
+- **macOS**: Open the `.dmg`, then drag TimeScribe to your Applications folder. TimeScribe runs as a menu bar app, so use the status item in the top menu bar to reopen the popover after closing it.
 
 ---
 
@@ -167,9 +168,17 @@ hdiutil create -volname TimeScribe -srcfolder nativephp/electron/dist/mac-arm64 
 codesign --force --deep --sign - nativephp/electron/dist/mac/TimeScribe.app
 hdiutil create -volname TimeScribe -srcfolder nativephp/electron/dist/mac -ov -format UDZO nativephp/electron/dist/TimeScribe-1.0.0-local-x64.dmg
 
+# Verify the app bundles and installer images before copying them to another Mac.
+codesign --verify --deep --strict --verbose=2 nativephp/electron/dist/mac-arm64/TimeScribe.app
+codesign --verify --deep --strict --verbose=2 nativephp/electron/dist/mac/TimeScribe.app
+hdiutil verify nativephp/electron/dist/TimeScribe-1.0.0-local-arm64.dmg
+hdiutil verify nativephp/electron/dist/TimeScribe-1.0.0-local-x64.dmg
+
 # Build for Windows (coming soon or adjust accordingly)
 php artisan native:build win
 ```
+
+Local macOS DMGs are written to `nativephp/electron/dist/`. Use `TimeScribe-1.0.0-local-arm64.dmg` for Apple Silicon Macs and `TimeScribe-1.0.0-local-x64.dmg` for Intel Macs. These local DMGs are ad-hoc signed so the Electron runtime keeps a consistent signature when copied to another Mac, but they are not Apple-notarized. A no-warning Gatekeeper install flow requires Developer ID signing and notarization.
 
 ### Daily Work Hours Reset
 
@@ -177,7 +186,7 @@ The `WORK HOURS` counter is scoped to the current local calendar day. If a work 
 
 The reset button below `WORK HOURS` is manual only. Clicking it clears today's accumulated work time and restarts the active work timer from `00:00:00`; it does not reset break time or previous days.
 
-The macOS menubar popover and tooltip keep the full `HH:MM:SS` duration. The always-visible menu bar label uses a compact `H:MM` duration so it still fits on crowded or notched Mac menu bars.
+The macOS menu bar popover and tooltip keep the full `HH:MM:SS` duration. The always-visible menu bar label uses a compact `H:MM` duration so it still fits on crowded or notched Mac menu bars. The menu bar, work, and break status icons are transparent macOS template images so they remain visible in light and dark menu bar appearances.
 
 ## 🖼 Screenshots
 
